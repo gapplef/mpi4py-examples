@@ -8,12 +8,13 @@ This example computes the 2D-FFT of every image inside <IMAGES.h5>,
 Summs the absolute value of their spectrogram and finally displays
 the result in log-scale.
 '''
+import numpy as np; np.set_printoptions(linewidth=np.nan)
+from numpy.fft import fft2, fftshift
+from parutils import pprint
+from mpi4py import MPI
+import traceback
 import tables
 import pylab
-import numpy as np
-from numpy.fft import fft2, fftshift
-from mpi4py import MPI
-from parutils import pprint
 
 # ============================================================================
 # Main
@@ -24,12 +25,17 @@ comm = MPI.COMM_WORLD
 in_fname = 'new1.h5'
 
 try:
-    h5in = tables.openFile(in_fname, 'r')
+    h5in = tables.open_file(in_fname, 'r')
 except:
     pprint('Error: Could not open file {}'.format(in_fname))
+    traceback.print_exc()
     exit(1)
 
-print(h5in)
+if comm.rank == 0:
+    print(h5in)
+    print('==  ' * 25)
+    print(h5in.root)
+
 images = h5in.root.images
 image_count, height, width = images.shape
 image_count = min(image_count, 800)
@@ -51,10 +57,24 @@ pprint(' Processing {:d} images of size {:d} x {:d}'.format(image_count, width, 
 comm.Barrier()  # Start stopwatch ###
 t_start = MPI.Wtime()
 
-my_spec = np.zeros((height, width))
-print(images.attrs)
+imgs = list(h5in.list_nodes(images))
+
+my_spec = np.zeros((width, height))
+if comm.rank == 0:
+    print('¤¤  ' * 25)
+    print(images._v_attrs)
+    print('--  ' * 10)
+    print(dir(images))
+    print('--  ' * 10)
+    # strange this should work images.attrs
+    # print(images.attrs)
+    print(vars(images))
+    print('¤¤  ' * 25)
+    print(imgs)
+
+
 for i in range(comm.rank, image_count, comm.size):
-    img = images[i]             # Load image from HDF file
+    img = imgs[i]               # Load image from HDF file
     img_ = fft2(img)            # 2D FFT
     my_spec += np.abs(img_)     # Sum absolute value into partial spectrogram
 
