@@ -1,6 +1,7 @@
 """
   Some utility functions useful for MPI parallel programming
 """
+from __future__ import print_function
 
 from mpi4py import MPI
 
