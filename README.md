@@ -1,8 +1,10 @@
-install mpi4py & mpich2
+Install mpi4py & mpich2
 `conda install mpi4py`
 
 Try out examples
 `mpirun -n 4 script_file.py`
+
+See also: https://github.com/rosafilgueira/mpi4py_examples
 
 -----------------------------
 
