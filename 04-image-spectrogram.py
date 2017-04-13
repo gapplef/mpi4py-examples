@@ -8,42 +8,39 @@ This example computes the 2D-FFT of every image inside <IMAGES.h5>,
 Summs the absolute value of their spectrogram and finally displays
 the result in log-scale.
 '''
-import numpy as np; np.set_printoptions(linewidth=np.nan)
-from numpy.fft import fft2, fftshift
-from parutils import pprint
-from mpi4py import MPI
-import traceback
+
+import sys
 import tables
 import pylab
+import numpy as np
+from numpy.fft import fft2, fftshift
+from mpi4py import MPI
 
-# ============================================================================
-# Main
 
 comm = MPI.COMM_WORLD
 
-# in_fname = sys.argv[-1]
-in_fname = 'new1.h5'
+in_fname = sys.argv[-1]
 
 try:
     h5in = tables.open_file(in_fname, 'r')
 except:
-    pprint('Error: Could not open file {}'.format(in_fname))
-    traceback.print_exc()
+    print('Error: Could not open file {}'.format(in_fname))
     exit(1)
 
 if comm.rank == 0:
     print(h5in)
-    print('==  ' * 25)
+    print('==  ' * 5)
     print(h5in.root)
 
 images = h5in.root.images
 image_count, height, width = images.shape
 image_count = min(image_count, 800)
 
-pprint('============================================================================')
-pprint(' Running {:d} parallel MPI processes'.format(comm.size))
-pprint(' Reading images from {}'.format(in_fname))
-pprint(' Processing {:d} images of size {:d} x {:d}'.format(image_count, width, height))
+if comm.rank == 0:
+    print('============================')
+    print(' Running {:d} parallel MPI processes'.format(comm.size))
+    print(' Reading images from {}'.format(in_fname))
+    print(' Processing {:d} images of size {:d} x {:d}'.format(image_count, width, height))
 
 # Distribute workload so that each MPI process analyzes image number i, where
 #  i % comm.size == comm.rank.
@@ -54,7 +51,7 @@ pprint(' Processing {:d} images of size {:d} x {:d}'.format(image_count, width, 
 #   rank 2: 2, 6, 10, ...
 #   rank 3: 3, 7, 11, ...
 
-comm.Barrier()  # Start stopwatch ###
+comm.Barrier()                  # Start stopwatch ###
 t_start = MPI.Wtime()
 
 imgs = list(h5in.list_nodes(images))
@@ -93,12 +90,14 @@ comm.Reduce(
 )
 
 comm.Barrier()
-t_diff = MPI.Wtime() - t_start  # Stop stopwatch ###
+t_diff = MPI.Wtime() - t_start # Stop stopwatch ###
 
 h5in.close()
 
-pprint(' Analyzed {:d} images in {:5.2f} seconds: {:4.2f} images per second'.format(image_count, t_diff, image_count / t_diff))
-pprint('============================================================================')
+if comm.rank == 0:
+    print(' Analyzed {:d} images in {:5.2f} seconds: {:4.2f} images per second'\
+           .format(image_count, t_diff, image_count / t_diff))
+    print('============================')
 
 # Now rank 0 outputs the resulting spectrogram.
 # Either onto the screen or into a image file.
@@ -108,3 +107,4 @@ if comm.rank == 0:
     pylab.show()
 
 comm.Barrier()
+

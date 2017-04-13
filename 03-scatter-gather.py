@@ -1,42 +1,61 @@
 #!/usr/bin/env python
 
-import numpy as np; np.set_printoptions(linewidth=np.nan)
-from mpi4py import MPI as mpi
-from parutils import pprint
+import numpy as np
+from mpi4py import MPI
+import scipy.integrate as inte
 
-comm = mpi.COMM_WORLD
-
-pprint('-' * 78)
-pprint(' Running on {:d} cores'.format(comm.size))
-pprint('-' * 78)
-
-my_N = 4
-N = my_N * comm.size
+comm = MPI.COMM_WORLD
 
 if comm.rank == 0:
-    A = np.arange(N, dtype=np.float64)
+    print("-"*20)
+    print(" Running on {:d} cores".format(comm.size))
+    print("-"*20)
+
+n_data = comm.size*4
+if comm.rank == 0:
+    A = np.arange(n_data, dtype=np.float64) # rank 0 has proper data
 else:
-    A = np.empty(N, dtype=np.float64)
+    A = np.empty(n_data, dtype=np.float64)  # all other just an empty array
 
-my_A = np.empty(my_N, dtype=np.float64)
+# Scatter data in A into A_scatter arrays
+n_scatter = n_data//comm.size
+A_scatter = np.empty(n_scatter, dtype=np.float64)
+comm.Scatter( [A, MPI.DOUBLE], [A_scatter, MPI.DOUBLE] )
 
-# Scatter data into my_A arrays()
-comm.Scatter([A, mpi.DOUBLE], [my_A, mpi.DOUBLE])
-
-print('After Scatter:')
+print("After Scatter:")
 for r in range(comm.size):
     if comm.rank == r:
-        print('[{:d}] {}'.format(comm.rank, my_A))
-    comm.Barrier()
+        print('[{:d}] {}'.format(comm.rank, A_scatter))
+    #comm.Barrier()
 
-# Everybody is multiplying by 2
-my_A *= 2
+# Data process function
+result_scatter = A_scatter*2
+#result_scatter = np.empty_like(A_scatter)
+#for i,a in enumerate(A_scatter):
+#    f = lambda x: x**a
+#    result_scatter[i], _ = inte.quad(f, 1,2)
 
-# Allgather data into A again
-comm.Allgather([my_A, mpi.DOUBLE], [A, mpi.DOUBLE])
+#result_scatter = np.empty_like(A_scatter)
+#def fun(data):
+#    result = np.empty_like(data)
+#    for i,a in enumerate(data):
+#        f = lambda x: x**a
+#        result[i], _ = inte.quad(f, 1,2)
+#    return result
+#result_scatter = fun(A_scatter)
 
-print('After Allgather:')
+
+# Allgather data into 'B' and data process result into 'result'
+B = np.empty_like(A)
+result = np.empty_like(A)
+comm.Allgather( [A_scatter, MPI.DOUBLE], [B, MPI.DOUBLE] )
+comm.Allgather( [result_scatter, MPI.DOUBLE], [result, MPI.DOUBLE] )
+
+print("After Allgather:")
 for r in range(comm.size):
     if comm.rank == r:
-        print('[{:d}] {}'.format(comm.rank, A))
-    comm.Barrier()
+        print('[{:d}] {}'.format(comm.rank, B))
+        print('[{:d}] {}'.format(comm.rank, result))
+    #comm.Barrier()
+comm.Barrier()  # synchronization across all group members
+

@@ -4,9 +4,7 @@ place of tags. Start parent with 'python <filename.py>' rather than mpirun;
 parent will then spawn specified number of workers. Work is randomized to
 demonstrate dynamic allocation. Worker logs are collectively passed back to
 parent at the end in place of results. Comments and output are both
-deliberately excessive for instructional purposes"""
-from __future__ import print_function
-from __future__ import division
+deliberately excessive for instructional purposes. """
 
 from mpi4py import MPI
 import random
@@ -31,7 +29,10 @@ if len(sys.argv) == 1:
     msg_list = task_list + ([StopIteration] * n_workers)
 
     # Spawn workers
-    comm = MPI.COMM_WORLD.Spawn(sys.executable, args=[sys.argv[0], start_worker], maxprocs=n_workers)
+    comm = MPI.COMM_WORLD.Spawn(
+        sys.executable,
+        args=[sys.argv[0], start_worker],
+        maxprocs=n_workers)
 
     # Reply to whoever asks until done
     status = MPI.Status()
@@ -41,7 +42,8 @@ if len(sys.argv) == 1:
 
         # Simple (loop position) progress bar
         percent = ((position + 1) * 100) // (n_tasks + n_workers)
-        sys.stdout.write('\rProgress: [%-50s] %3i%% ' % ('=' * (percent // 2), percent))
+        sys.stdout.write(
+            '\rProgress: [{:50s}] {:3}% '.format( '='*(percent//2), percent))
         sys.stdout.flush()
 
     # Gather reports from workers

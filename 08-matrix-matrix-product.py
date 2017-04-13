@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
 import numpy as np
 from mpi4py import MPI
 from time import time
 
-# ============================================================================
+# =====================
 
 my_N = 6000
 my_M = 6000
 
-# ============================================================================
+# =====================
 
 NORTH = 0
 SOUTH = 1
@@ -18,66 +17,60 @@ EAST = 2
 WEST = 3
 
 
-def pprint(string, comm=MPI.COMM_WORLD):
-    if comm.rank == 0:
-        print(string)
+comm = MPI.COMM_WORLD
+
+mpi_rows = int(np.floor(np.sqrt(comm.size)))
+mpi_cols = comm.size // mpi_rows
+
+if comm.rank == 0:
+    print( 'Creating a {:d} x {:d} processor grid...'.format(mpi_rows, mpi_cols) )
+
+ccomm = comm.Create_cart( (mpi_rows, mpi_cols), periods=(True, True), reorder=True )
+
+my_mpi_row, my_mpi_col = ccomm.Get_coords( ccomm.rank )
+neigh = [0, 0, 0, 0]
+
+neigh[NORTH], neigh[SOUTH] = ccomm.Shift(0, 1)
+neigh[EAST],  neigh[WEST]  = ccomm.Shift(1, 1)
 
 
-if __name__ == '__main__':
-    comm = MPI.COMM_WORLD
+# Create matrices
+my_A = np.random.normal(size=(my_N, my_M)).astype(np.float32)
+my_B = np.random.normal(size=(my_N, my_M)).astype(np.float32)
+my_C = np.zeros_like(my_A)
 
-    mpi_rows = int(np.floor(np.sqrt(comm.size)))
-    mpi_cols = comm.size // mpi_rows
-    if mpi_rows * mpi_cols > comm.size:
-        mpi_cols -= 1
-    if mpi_rows * mpi_cols > comm.size:
-        mpi_rows -= 1
+tile_A,  tile_B  = my_A, my_B
+tile_A_, tile_B_ = np.empty_like(my_A), np.empty_like(my_A)
+req = [None, None, None, None]
 
-    pprint('Creating a {:d} x {:d} processor grid...'.format(mpi_rows, mpi_cols))
+t0 = time()
+for r in range(mpi_rows):
+    req[EAST]  = ccomm.Isend(tile_A , neigh[EAST])
+    req[WEST]  = ccomm.Irecv(tile_A_, neigh[WEST])
+    req[SOUTH] = ccomm.Isend(tile_B , neigh[SOUTH])
+    req[NORTH] = ccomm.Irecv(tile_B_, neigh[NORTH])
 
-    ccomm = comm.Create_cart((mpi_rows, mpi_cols), periods=(True, True), reorder=True)
+    #t0 = time()
+    my_C += np.dot(tile_A, tile_B)
+    #t1 = time()
 
-    my_mpi_row, my_mpi_col = ccomm.Get_coords(ccomm.rank)
-    neigh = [0, 0, 0, 0]
+    req[0].Waitall(req)
+    #t2 = time()
+    #print( 'Time computing {:6.2f}  {:6.2f}'.foramt(t1-t0, t2-t1) )
+comm.barrier()
+t_total = time() - t0
 
-    neigh[NORTH], neigh[SOUTH] = ccomm.Shift(0, 1)
-    neigh[EAST], neigh[WEST] = ccomm.Shift(1, 1)
+t0 = time()
+np.dot(tile_A, tile_B)
+t_serial = time() - t0
 
-    # Create matrices
-    my_A = np.random.normal(size=(my_N, my_M)).astype(np.float32)
-    my_B = np.random.normal(size=(my_N, my_M)).astype(np.float32)
-    my_C = np.zeros_like(my_A)
+if comm.rank == 0:
+    print("===============================")
+    print('computed (serial) {:d} x {:d} x {:d} in  {:6.2f} seconds'.format(my_M, my_M, my_N, t_serial))
+    print('... expecting parallel computation to take {:6.2f} seconds'.format(mpi_rows * mpi_rows * mpi_cols * t_serial / comm.size))
+    print('computed (parallel) {:d} x {:d} x {:d} in        {:6.2f} seconds'.format(mpi_rows * my_M, mpi_rows * my_M, mpi_cols * my_N, t_total))
 
-    tile_A, tile_B = my_A, my_B
-    tile_A_, tile_B_ = np.empty_like(my_A), np.empty_like(my_A)
-    req = [None, None, None, None]
+# print '[%d] (%d,%d): %s' % (comm.rank, my_mpi_row, my_mpi_col, neigh)
 
-    t0 = time()
-    for r in range(mpi_rows):
-        req[EAST] = ccomm.Isend(tile_A, neigh[EAST])
-        req[WEST] = ccomm.Irecv(tile_A_, neigh[WEST])
-        req[SOUTH] = ccomm.Isend(tile_B, neigh[SOUTH])
-        req[NORTH] = ccomm.Irecv(tile_B_, neigh[NORTH])
+comm.barrier()
 
-        # t0 = time()
-        my_C += np.dot(tile_A, tile_B)
-        # t1 = time()
-
-        req[0].Waitall(req)
-        # t2 = time()
-        # print('Time computing %6.2f  %6.2f' % (t1-t0, t2-t1))
-    comm.barrier()
-    t_total = time() - t0
-
-    t0 = time()
-    np.dot(tile_A, tile_B)
-    t_serial = time() - t0
-
-    pprint(78 * '=')
-    pprint('computed (serial) {:d} x {:d} x {:d} in  {:6.2f} seconds'.format(my_M, my_M, my_N, t_serial))
-    pprint('... expecting parallel computation to take {:6.2f} seconds'.format(mpi_rows * mpi_rows * mpi_cols * t_serial / comm.size))
-    pprint('computed (parallel) {:d} x {:d} x {:d} in        {:6.2f} seconds'.format(mpi_rows * my_M, mpi_rows * my_M, mpi_cols * my_N, t_total))
-
-    # print '[%d] (%d,%d): %s' % (comm.rank, my_mpi_row, my_mpi_col, neigh)
-
-    comm.barrier()

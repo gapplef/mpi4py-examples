@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 '''
-Demonstrate the task-pull paradigm for high-throughput computing using mpi4py. Task pull is an efficient way to perform a large number of independent tasks when there are more tasks than processors, especially when the run times vary for each task.
+Demonstrate the task-pull paradigm for high-throughput computing
+using mpi4py. Task pull is an efficient way to perform a large number of
+independent tasks when there are more tasks than processors, especially
+when the run times vary for each task. 
 
 This code is over-commented for instructional purposes.
-This example was contributed by Craig Finch (cfinch@ieee.org). Inspired by math.acadiau.ca/ACMMaC/Rmpi/index.html
+
+This example was contributed by Craig Finch (cfinch@ieee.org).
+Inspired by http://math.acadiau.ca/ACMMaC/Rmpi/index.html
 '''
-from __future__ import print_function
 
 from mpi4py import MPI
 
 
-
 def enum(*sequential, **named):
     '''Handy way to fake an enumerated type in Python
-    stackoverflow.com/questions/36932/how-can-i-represent-an-enum-in-python
+    http://stackoverflow.com/questions/36932/how-can-i-represent-an-enum-in-python
     '''
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
@@ -57,7 +60,7 @@ if rank == 0:
 else:
     # worker processes execute code below
     name = MPI.Get_processor_name()
-    print('i am a worker with rank {:d} on {}.'.format(rank, name))
+    print('I am a worker with rank {:d} on {}.'.format(rank, name))
     while True:
         comm.send(None, dest=0, tag=tags.READY)
         task = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)

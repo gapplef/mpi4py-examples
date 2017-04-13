@@ -25,30 +25,29 @@ Allgather is used to distribute the partial vectors v to all other
 processes.
 '''
 
-from __future__ import division
+
 import numpy as np
 from numpy.fft import fft2, ifft2
 from math import ceil, fabs
 from mpi4py import MPI
-from parutils import pprint
 
-# ============================================================================
 
-size = 100000          # length of vector v
-iter = 20              # number of iterations to run
+size = 10000     # length of vector v
+iter = 20        # number of iterations to run
 
 comm = MPI.COMM_WORLD
 
-pprint("============================================================================")
-pprint(" Running %d parallel MPI processes" % comm.size)
+if comm.rank == 0:
+    print("===============================")
+    print(" Running %d parallel MPI processes" % comm.size)
 
 my_size = size // comm.size     # Every process computes a vector of lenth *my_size*
-size = comm.size * my_size        # Make sure size is a integer multiple of comm.size
+size = comm.size * my_size      # Make sure size is a integer multiple of comm.size
 my_offset = comm.rank * my_size
 
 # This is the complete vector
-vec = np.zeros(size)            # Every element zero...
-vec[0] = 1.                    # ... besides vec[0]
+vec = np.zeros(size)       # Every element zero...
+vec[0] = 1.                # ... besides vec[0]
 
 # Create my (local) slice of the matrix
 my_M = np.zeros((my_size, size))
@@ -56,7 +55,7 @@ for i in range(my_size):
     j = (my_offset + i - 1) % size
     my_M[i, j] = 1.
 
-comm.Barrier()  # Start stopwatch ###
+comm.Barrier()                  # Start stopwatch ###
 t_start = MPI.Wtime()
 
 for t in range(iter):
@@ -66,8 +65,11 @@ for t in range(iter):
 comm.Barrier()
 t_diff = MPI.Wtime() - t_start  # Stop stopwatch ###
 
-if fabs(vec[iter] - 1.0) > .01:
-    pprint("!! Error: Wrong result!")
+if comm.rank == 0:
+    if fabs(vec[iter] - 1.0) > .01:
+        print("!! Error: Wrong result!")
+    print("{:d} iterations of size {:d} in {:5.2f}s: {:5.2f} iterations per second".\
+            format(iter, size, t_diff, iter/t_diff)
+         )
+    print("===============================")
 
-pprint(" %d iterations of size %d in %5.2fs: %5.2f iterations per second" % (iter, size, t_diff, iter / t_diff) )
-pprint("============================================================================")

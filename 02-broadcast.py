@@ -1,26 +1,25 @@
 #!/usr/bin/env python
 
-import numpy as np; np.set_printoptions(linewidth=np.nan)
-from mpi4py import MPI as mpi
-from parutils import pprint
+import numpy as np
+from mpi4py import MPI
 
-comm = mpi.COMM_WORLD
+comm = MPI.COMM_WORLD
 
-pprint('-' * 78)
-pprint(' Running on %d cores' % comm.size)
-pprint('-' * 78)
+if comm.rank == 0:
+    print('-'*20)
+    print(' Running on %d cores' % comm.size)
+    print('-'*20)
 
-comm.Barrier()
-
-# Prepare a vector of N=5 elements to be broadcasted...
+# data to be broadcasted
 N = 5
 if comm.rank == 0:
-    A = np.arange(N, dtype=np.float64)    # rank 0 has proper data
+    A = np.arange(N, dtype=np.float64) # rank 0 has proper data
 else:
-    A = np.empty(N, dtype=np.float64)     # all other just an empty array
+    A = np.empty(N, dtype=np.float64)  # all other just an empty array
 
-# Broadcast A from rank 0 to everybody
-comm.Bcast([A, mpi.DOUBLE])
+# Broadcast data from rank 0 to all other numbers
+comm.Bcast( [A, MPI.DOUBLE] )
 
-# Everybody should now have the same...
+# all numbers should now have the same data
 print('[%02d] %s' % (comm.rank, A))
+comm.Barrier()  # synchronization across all group members
