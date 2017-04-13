@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 """
-
 How to run:
 
-   mpirun -np <NUM> ./pseudo-whitening <INPUT-IMAGES.h5> <OUTPUT-IMAGES.h5>
+   mpirun -n <NUM> python 05-pseudo-whitening.py <INPUT-IMAGES.h5> <OUTPUT-IMAGES.h5>
 
 """
 

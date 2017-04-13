@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 '''
-
 Demonstrating a MPI parallel Matrix-Vector Multiplication.
 
 This code will run *iter* iterations of

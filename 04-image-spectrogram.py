@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 '''
-How to run:
-
-   mpirun -np <NUM> ./image-spectrogram <IMAGES.h5>
-
 This example computes the 2D-FFT of every image inside <IMAGES.h5>,
 Summs the absolute value of their spectrogram and finally displays
 the result in log-scale.
+How to run:
+
+   mpirun -n <NUM> python 04-image-spectrogram.py <IMAGES.h5>
+
 '''
 
 import sys

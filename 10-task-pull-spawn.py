@@ -1,10 +1,17 @@
-""" A different implementation of task-pull with less communication and full
+"""
+A different implementation of task-pull with less communication and full
 use of resources (mainly-idle parent shares with worker). Sentinels are used in
 place of tags. Start parent with 'python <filename.py>' rather than mpirun;
 parent will then spawn specified number of workers. Work is randomized to
 demonstrate dynamic allocation. Worker logs are collectively passed back to
 parent at the end in place of results. Comments and output are both
-deliberately excessive for instructional purposes. """
+deliberately excessive for instructional purposes.
+
+How to run:
+
+   mpirun -n 1 python 10-task-pull-spawn.py
+
+"""
 
 from mpi4py import MPI
 import random
