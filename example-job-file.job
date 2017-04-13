@@ -10,4 +10,6 @@
 cd $PBS_O_WORKDIR
 
 mpirun -x PYTHONPATH ./matrix-vector-product
+#mpirun -x PYTHONPATH ./image-spectrogram van-hateren-linear.h5
+#mpirun -x PYTHONPATH ./pseudo-whitening van-hateren-linear.h5 van-hateren-whitened.h5
 
